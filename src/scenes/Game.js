@@ -1,13 +1,7 @@
+import { SEGMENTS } from '../constants'
+
 let w, h
 const font = { fontSize: 45, fontFamily: 'Sailec', color: '#000' }
-const SEGMENTS = [
-  { icon: 'hand', label: '1.5x' },
-  { icon: 'coin', label: '100' },
-  { icon: 'question', label: '???' },
-  { icon: 'coin', label: '10,000' },
-  { icon: 'hand', label: '3x' },
-  { icon: 'coin', label: '50' },
-]
 const frags = 360 / SEGMENTS.length / 180
 
 // TODO: win screen
