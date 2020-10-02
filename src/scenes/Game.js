@@ -3,7 +3,11 @@ import { SEGMENTS } from '../constants'
 const SPIN_DURATION = 5000
 
 let w, h
-const font = { fontSize: 45, fontFamily: 'Sailec', color: '#000' }
+const font = {
+  fontSize: 45,
+  fontFamily: 'SailecBold',
+  color: '#000',
+}
 const frags = 360 / SEGMENTS.length / 180
 const PRIZES = [5, 1, 4, 0, 2, 3]
 let spinCount = 0
@@ -25,9 +29,11 @@ export default class extends Phaser.Scene {
     this.drawWheel()
     this.drawCursor()
     this.drawUI()
+    this.musicAsset = this.sound.add('music', { volume: 0.7, loop: true })
+    this.musicAsset.play()
 
     this.emitters = {}
-    const emitterConfig = {
+    this.emitterConfig = {
       x: w / 2,
       y: h / 2 - 300,
       speed: { min: -800, max: 800 },
@@ -39,11 +45,32 @@ export default class extends Phaser.Scene {
       lifespan: { min: 500, max: 3000 },
       gravityY: 1200,
     }
-    this.emitters.coin = this.add.particles('coin').createEmitter(emitterConfig)
+    this.emitterConfig2 = {
+      x: w / 2,
+      y: h / 2,
+      angle: { min: 180, max: 360 },
+      rotate: { min: -500, max: 500, start: -500, end: 500 },
+      speed: { min: 800, max: 1500 },
+      lifespan: 5000,
+      gravityY: 1000,
+      quantity: 1,
+      active: false,
+      scale: { min: 0.1, max: 1 },
+    }
+    this.emitters.confetti = this.add.particles('confetti', [
+      { frame: 0, ...this.emitterConfig2 },
+      { frame: 1, ...this.emitterConfig2 },
+      { frame: 2, ...this.emitterConfig2 },
+    ])
+    this.emitters.coin = this.add
+      .particles('coin')
+      .createEmitter(this.emitterConfig)
     this.emitters.question = this.add
       .particles('question')
-      .createEmitter(emitterConfig)
-    this.emitters.hand = this.add.particles('hand').createEmitter(emitterConfig)
+      .createEmitter(this.emitterConfig)
+    this.emitters.hand = this.add
+      .particles('hand')
+      .createEmitter(this.emitterConfig)
 
     this.input.on('pointermove', this.move, this)
     this.input.on('pointerdown', this.click, this)
@@ -96,20 +123,51 @@ export default class extends Phaser.Scene {
     const selectedIndex =
       (Math.floor((this.container.angle + 180) / 60) + 3) % 6
     const segment = SEGMENTS[selectedIndex]
-    this.headingText.text = `You won ${segment.heading}`
-    this.emitters[segment.icon].active = true
-    this.emitters[segment.icon].explode(30 + 10 * (segment.value || 1))
-    // this.time.addEvent({
-    //   delay: 3000,
-    //   callback: () => {
-    //     this.headingText.text = 'Try your luck!'
-    //   },
-    // })
+    // this.emitters[segment.icon].active = true
+    // this.emitters[segment.icon].explode(30 + 10 * (segment.value || 1))
+    this.emitters.confetti.emitters.list.forEach((e) => {
+      e.active = true
+    })
+    this.time.addEvent({
+      delay: 10,
+      callback: () => {
+        this.sound.play('win', { volume: 0.5 })
+        this.time.addEvent({
+          delay: 2500,
+          callback: () => {
+            this.tweens.add({
+              targets: this.musicAsset,
+              volume: 0.7,
+              duration: 500,
+            })
+            this.time.addEvent({
+              delay: 1000,
+              callback: () => {
+                this.headingText.text = 'Try your luck!'
+                this.emitters.confetti.destroy()
+                this.emitters.confetti = this.add.particles('confetti', [
+                  { frame: 0, ...this.emitterConfig2 },
+                  { frame: 1, ...this.emitterConfig2 },
+                  { frame: 2, ...this.emitterConfig2 },
+                ])
+              },
+            })
+            this.scene.launch('Score', { prize: segment.heading })
+          },
+        })
+      },
+    })
   }
 
   spin(amount = 5000 + Math.random() * 1000, duration = SPIN_DURATION) {
     this.spinTween && this.spinTween.remove()
     if (this.spinning) return
+
+    this.tweens.add({
+      targets: this.musicAsset,
+      volume: 0.2,
+      duration: 500,
+    })
 
     // const targetIndex = Math.floor(Math.random() * SEGMENTS.length)
     const targetIndex = PRIZES[spinCount % PRIZES.length]
@@ -124,7 +182,7 @@ export default class extends Phaser.Scene {
     })
     // this.sound.play('spin3', { volume: 0.5 })
 
-    let thing = (delay) => {
+    let tick = (delay) => {
       this.time.addEvent({
         delay,
         callback: () => {
@@ -142,20 +200,13 @@ export default class extends Phaser.Scene {
             ease: 'Cubic.easeInOut',
           })
           if (delay < 350) {
-            thing(delay * 1.08)
-          } else {
-            this.time.addEvent({
-              delay: 200,
-              callback: () => {
-                this.sound.play('win', { volume: 0.5 })
-              },
-            })
+            tick(delay * 1.08)
           }
         },
       })
     }
 
-    thing(50)
+    tick(50)
 
     if (amount > 1000) {
       spinCount++
@@ -209,6 +260,7 @@ export default class extends Phaser.Scene {
 
     this.container = this.add.container(w / 2, h / 2, [this.wheel, ...children])
     this.container.angle = Math.floor(Math.random() * SEGMENTS.length) * 60 + 30
+    this.container.setDepth(19)
   }
 
   drawCursor() {
@@ -234,6 +286,9 @@ export default class extends Phaser.Scene {
     this.tabText = this.add
       .text(w / 2, h / 2, '???', { ...font, fontSize: 60 })
       .setOrigin(0.5)
+
+    this.cursor.setDepth(20)
+    this.tabText.setDepth(21)
   }
 
   drawUI() {
