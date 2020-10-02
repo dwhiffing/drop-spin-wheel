@@ -1,13 +1,14 @@
 import { SEGMENTS } from '../constants'
 
+const SPIN_DURATION = 5000
+
 let w, h
 const font = { fontSize: 45, fontFamily: 'Sailec', color: '#000' }
 const frags = 360 / SEGMENTS.length / 180
-
+const PRIZES = [5, 1, 4, 0, 2, 3]
+let spinCount = 0
 // TODO: win screen
-// TODO: particles
 // TODO: drop shadows
-// TODO: sound
 // TODO: backend integration
 
 export default class extends Phaser.Scene {
@@ -24,6 +25,25 @@ export default class extends Phaser.Scene {
     this.drawWheel()
     this.drawCursor()
     this.drawUI()
+
+    this.emitters = {}
+    const emitterConfig = {
+      x: w / 2,
+      y: h / 2 - 300,
+      speed: { min: -800, max: 800 },
+      rotate: { min: -500, max: 500, start: -500, end: 500 },
+      angle: { min: 0, max: 360 },
+      scale: { min: 0.2, max: 0.5 },
+      alpha: { start: 1, end: 0 },
+      active: false,
+      lifespan: { min: 500, max: 3000 },
+      gravityY: 1200,
+    }
+    this.emitters.coin = this.add.particles('coin').createEmitter(emitterConfig)
+    this.emitters.question = this.add
+      .particles('question')
+      .createEmitter(emitterConfig)
+    this.emitters.hand = this.add.particles('hand').createEmitter(emitterConfig)
 
     this.input.on('pointermove', this.move, this)
     this.input.on('pointerdown', this.click, this)
@@ -53,36 +73,92 @@ export default class extends Phaser.Scene {
     if (this.spinning) return
 
     this.isDown = false
-    const timeDelta = Math.abs(this.startTime - new Date())
-    const xDelta = Math.abs(this.startX - pointer.x)
+    // TODO: start time needs to be reset whenever cursor hasn't moved much
+    const timeDelta = this.startTime - new Date()
+    const xDelta = this.startX - pointer.x
     const force = xDelta / timeDelta
-    if (force > 3) {
+    if (force > 2) {
       this.spin()
     } else {
       this.spin(force * 100, 1000)
     }
   }
 
-  spin(amount = 5000 + Math.random() * 1000, duration = 8000) {
+  finish() {
+    if (!this.spinning) return
+
+    this.spinning = false
+    this.tweens.add({
+      targets: this.buttonGraphics,
+      alpha: 1,
+      duration: 500,
+    })
+    const selectedIndex =
+      (Math.floor((this.container.angle + 180) / 60) + 3) % 6
+    const segment = SEGMENTS[selectedIndex]
+    this.headingText.text = `You won ${segment.heading}`
+    this.emitters[segment.icon].active = true
+    this.emitters[segment.icon].explode(30 + 10 * (segment.value || 1))
+    // this.time.addEvent({
+    //   delay: 3000,
+    //   callback: () => {
+    //     this.headingText.text = 'Try your luck!'
+    //   },
+    // })
+  }
+
+  spin(amount = 5000 + Math.random() * 1000, duration = SPIN_DURATION) {
+    this.spinTween && this.spinTween.remove()
     if (this.spinning) return
 
-    this.tweens.add({
+    // const targetIndex = Math.floor(Math.random() * SEGMENTS.length)
+    const targetIndex = PRIZES[spinCount % PRIZES.length]
+    const variance = Math.random() * 30 - 15
+
+    this.spinTween = this.tweens.add({
       targets: [this.container],
-      angle: this.container.angle + amount,
+      angle: amount > 1000 ? 5790 + 60 * targetIndex + variance : amount,
       duration: duration,
       ease: 'Cubic.easeOut',
-      onComplete: () => {
-        this.spinning = false
-        this.headingText.text = 'Try your luck!'
-        this.tweens.add({
-          targets: this.buttonGraphics,
-          alpha: 1,
-          duration: 500,
-        })
-      },
+      onComplete: amount > 1000 ? this.finish.bind(this) : null,
     })
+    // this.sound.play('spin3', { volume: 0.5 })
+
+    let thing = (delay) => {
+      this.time.addEvent({
+        delay,
+        callback: () => {
+          if (!this.spinning) return
+
+          // window.navigator.vibrate && window.navigator.vibrate(50)
+
+          this.sound.play('spin', { volume: 0.5, rate: 2 - delay / 650 })
+
+          this.tweens.add({
+            targets: [this.cursor],
+            scale: 1 + (500 - delay) / 6000,
+            yoyo: true,
+            duration: 20,
+            ease: 'Cubic.easeInOut',
+          })
+          if (delay < 350) {
+            thing(delay * 1.08)
+          } else {
+            this.time.addEvent({
+              delay: 200,
+              callback: () => {
+                this.sound.play('win', { volume: 0.5 })
+              },
+            })
+          }
+        },
+      })
+    }
+
+    thing(50)
 
     if (amount > 1000) {
+      spinCount++
       this.spinning = true
       this.headingText.text = '👀'
 
@@ -90,14 +166,6 @@ export default class extends Phaser.Scene {
         targets: this.buttonGraphics,
         alpha: 0,
         duration: 500,
-      })
-      this.tweens.add({
-        targets: [this.cursor],
-        scale: 1.03,
-        repeat: 22,
-        yoyo: true,
-        duration: duration / 50,
-        ease: 'Cubic.easeOut',
       })
     }
   }
@@ -110,7 +178,8 @@ export default class extends Phaser.Scene {
     this.wheel.fillStyle(0x000000)
     this.wheel.fill()
     let children = []
-    SEGMENTS.forEach(({ icon, label }, i) => {
+    const arr = [...SEGMENTS]
+    arr.reverse().forEach(({ icon, label }, i) => {
       // Draw segment bg
       this.wheel.beginPath()
       const segmentColor = i % 2 === 0 ? 0x65af87 : 0x417057
@@ -119,7 +188,9 @@ export default class extends Phaser.Scene {
       this.wheel.strokePath()
 
       // Draw image and text
-      const angle = frags * i * Math.PI + 0.52
+      // TODO: offset only works for 6 segments
+      const offset = 1.05
+      const angle = frags * i * Math.PI - offset
       const degs = angle * (180 / Math.PI) + 90
       const style = { ...font, color: '#fff' }
       children.push(
@@ -137,6 +208,7 @@ export default class extends Phaser.Scene {
     })
 
     this.container = this.add.container(w / 2, h / 2, [this.wheel, ...children])
+    this.container.angle = Math.floor(Math.random() * SEGMENTS.length) * 60 + 30
   }
 
   drawCursor() {
@@ -194,6 +266,6 @@ export default class extends Phaser.Scene {
   }
 
   getAngle(n) {
-    return (((Math.PI / 180) * 360) / SEGMENTS.length) * n
+    return (((Math.PI / 180) * 360) / SEGMENTS.length) * n + 0.525
   }
 }

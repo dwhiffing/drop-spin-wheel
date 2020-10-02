@@ -22,6 +22,10 @@ export default class extends Phaser.Scene {
       'https://ajax.googleapis.com/ajax/libs/webfont/1.6.26/webfont.js',
     )
 
+    this.load.audio('spin', 'assets/audio/spin.wav', { instances: 5 })
+    this.load.audio('spin3', 'assets/audio/spin3.wav', { instances: 5 })
+    this.load.audio('swish', 'assets/audio/swish.wav', { instances: 5 })
+    this.load.audio('win', 'assets/audio/win.wav')
     this.load.image('playButton', 'assets/images/button.png')
     this.load.image('coin', 'assets/images/coin.png')
     this.load.image('question', 'assets/images/question.png')
