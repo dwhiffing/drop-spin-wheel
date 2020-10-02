@@ -29,8 +29,8 @@ export default class extends Phaser.Scene {
     this.drawWheel()
     this.drawCursor()
     this.drawUI()
-    this.musicAsset = this.sound.add('music', { volume: 0.7, loop: true })
-    this.musicAsset.play()
+    // this.musicAsset = this.sound.add('music', { volume: 0.7, loop: true })
+    // this.musicAsset.play()
 
     this.emitters = {}
     this.emitterConfig = {
@@ -135,11 +135,11 @@ export default class extends Phaser.Scene {
         this.time.addEvent({
           delay: 2500,
           callback: () => {
-            this.tweens.add({
-              targets: this.musicAsset,
-              volume: 0.7,
-              duration: 500,
-            })
+            // this.tweens.add({
+            //   targets: this.musicAsset,
+            //   volume: 0.7,
+            //   duration: 500,
+            // })
             this.time.addEvent({
               delay: 1000,
               callback: () => {
@@ -163,11 +163,11 @@ export default class extends Phaser.Scene {
     this.spinTween && this.spinTween.remove()
     if (this.spinning) return
 
-    this.tweens.add({
-      targets: this.musicAsset,
-      volume: 0.2,
-      duration: 500,
-    })
+    // this.tweens.add({
+    //   targets: this.musicAsset,
+    //   volume: 0.2,
+    //   duration: 500,
+    // })
 
     // const targetIndex = Math.floor(Math.random() * SEGMENTS.length)
     const targetIndex = PRIZES[spinCount % PRIZES.length]
@@ -188,7 +188,7 @@ export default class extends Phaser.Scene {
         callback: () => {
           if (!this.spinning) return
 
-          // window.navigator.vibrate && window.navigator.vibrate(50)
+          window.navigator.vibrate && window.navigator.vibrate(50)
 
           this.sound.play('spin', { volume: 0.5, rate: 2 - delay / 650 })
 
