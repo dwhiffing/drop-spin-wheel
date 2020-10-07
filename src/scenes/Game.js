@@ -9,9 +9,9 @@ const font = {
   color: '#000',
 }
 const frags = 360 / SEGMENTS.length / 180
-const PRIZES = [5, 1, 4, 0, 2, 3]
+const PRIZES = [5, 4, 2, 0, 1, 3]
 let spinCount = 0
-// TODO: win screen
+
 // TODO: drop shadows
 // TODO: backend integration
 
@@ -29,48 +29,42 @@ export default class extends Phaser.Scene {
     this.drawWheel()
     this.drawCursor()
     this.drawUI()
-    // this.musicAsset = this.sound.add('music', { volume: 0.7, loop: true })
-    // this.musicAsset.play()
 
     this.emitters = {}
-    this.emitterConfig = {
+    this.iconConfig = {
       x: w / 2,
       y: h / 2 - 300,
-      speed: { min: -800, max: 800 },
-      rotate: { min: -500, max: 500, start: -500, end: 500 },
-      angle: { min: 0, max: 360 },
-      scale: { min: 0.2, max: 0.5 },
-      alpha: { start: 1, end: 0 },
+      speedX: { min: -400, max: 400 },
+      speedY: { min: -1200, max: -300 },
+      rotate: { min: -1000, max: 1000, start: -1000, end: 1000 },
+      scale: { min: 0.5, max: 1 },
       active: false,
-      lifespan: { min: 500, max: 3000 },
-      gravityY: 1200,
-    }
-    this.emitterConfig2 = {
-      x: w / 2,
-      y: h / 2,
-      angle: { min: 180, max: 360 },
-      rotate: { min: -500, max: 500, start: -500, end: 500 },
-      speed: { min: 800, max: 1500 },
       lifespan: 5000,
-      gravityY: 1000,
-      quantity: 1,
-      active: false,
-      scale: { min: 0.1, max: 1 },
+      gravityY: 1500,
     }
-    this.emitters.confetti = this.add.particles('confetti', [
-      { frame: 0, ...this.emitterConfig2 },
-      { frame: 1, ...this.emitterConfig2 },
-      { frame: 2, ...this.emitterConfig2 },
-    ])
-    this.emitters.coin = this.add
-      .particles('coin')
-      .createEmitter(this.emitterConfig)
-    this.emitters.question = this.add
-      .particles('question')
-      .createEmitter(this.emitterConfig)
-    this.emitters.hand = this.add
-      .particles('hand')
-      .createEmitter(this.emitterConfig)
+    this.confettiConfig = {
+      x: { min: -20, max: w + 20 },
+      y: -100,
+      rotate: { min: -500, max: 500, start: -500, end: 500 },
+      speedX: { min: -50, max: 50 },
+      speedY: { min: 0, max: 1000 },
+      frame: [0, 1, 2, 3, 4, 5, 6, 7, 8],
+      lifespan: 5000,
+      alpha: { min: 0.5, max: 1 },
+      gravityY: 1000,
+      quantity: 2,
+      active: false,
+      scale: { min: 1, max: 1.5 },
+    }
+    this.emitters.confetti = this.add.particles('confetti', this.confettiConfig)
+    this.coinParticles = this.add.particles('coin').setDepth(22)
+    this.questionParticles = this.add.particles('question').setDepth(22)
+    this.handParticles = this.add.particles('hand').setDepth(22)
+    this.emitters.coin = this.coinParticles.createEmitter(this.iconConfig)
+    this.emitters.question = this.questionParticles.createEmitter(
+      this.iconConfig,
+    )
+    this.emitters.hand = this.handParticles.createEmitter(this.iconConfig)
 
     this.input.on('pointermove', this.move, this)
     this.input.on('pointerdown', this.click, this)
@@ -79,20 +73,27 @@ export default class extends Phaser.Scene {
 
   click(pointer) {
     if (this.spinning) return
-
+    this.lastX = pointer.x
+    this.lastY = pointer.y
     this.isDown = true
-    this.startX = pointer.x
-    this.startY = pointer.y
     this.startAngle = this.container.angle
-    this.startTime = +new Date()
+    this.startAngleD =
+      Phaser.Math.RAD_TO_DEG *
+      Phaser.Math.Angle.Between(pointer.x, pointer.y, w / 2, h / 2)
   }
 
   move(pointer) {
     if (this.spinning) return
 
     if (this.isDown) {
-      const diff = (pointer.x - this.startX) / 5
-      this.container.angle = this.startAngle + diff
+      const angle =
+        Phaser.Math.RAD_TO_DEG *
+        Phaser.Math.Angle.Between(pointer.x, pointer.y, w / 2, h / 2)
+      this.xDelta = this.lastX - pointer.x
+      this.yDelta = this.lastY - pointer.y
+      this.container.angle = this.startAngle + (angle - this.startAngleD)
+      this.lastX = pointer.x
+      this.lastY = pointer.y
     }
   }
 
@@ -100,34 +101,26 @@ export default class extends Phaser.Scene {
     if (this.spinning) return
 
     this.isDown = false
-    // TODO: start time needs to be reset whenever cursor hasn't moved much
-    const timeDelta = this.startTime - new Date()
-    const xDelta = this.startX - pointer.x
-    const force = xDelta / timeDelta
-    if (force > 2) {
-      this.spin()
-    } else {
-      this.spin(force * 100, 1000)
+    let force = this.xDelta + this.yDelta
+    if (Math.abs(force) > 30) {
+      this.spin(force > 0 ? -1 : 1)
     }
   }
 
   finish() {
     if (!this.spinning) return
 
-    this.spinning = false
-    this.tweens.add({
-      targets: this.buttonGraphics,
-      alpha: 1,
-      duration: 500,
-    })
     const selectedIndex =
       (Math.floor((this.container.angle + 180) / 60) + 3) % 6
     const segment = SEGMENTS[selectedIndex]
-    // this.emitters[segment.icon].active = true
-    // this.emitters[segment.icon].explode(30 + 10 * (segment.value || 1))
+
+    this.emitters[segment.icon].active = true
+    this.emitters[segment.icon].explode(25)
+
     this.emitters.confetti.emitters.list.forEach((e) => {
       e.active = true
     })
+
     this.time.addEvent({
       delay: 10,
       callback: () => {
@@ -135,22 +128,23 @@ export default class extends Phaser.Scene {
         this.time.addEvent({
           delay: 2500,
           callback: () => {
-            // this.tweens.add({
-            //   targets: this.musicAsset,
-            //   volume: 0.7,
-            //   duration: 500,
-            // })
             this.time.addEvent({
               delay: 1000,
               callback: () => {
                 this.headingText.text = 'Try your luck!'
                 this.emitters.confetti.destroy()
                 this.emitters.confetti = this.add.particles('confetti', [
-                  { frame: 0, ...this.emitterConfig2 },
-                  { frame: 1, ...this.emitterConfig2 },
-                  { frame: 2, ...this.emitterConfig2 },
+                  { frame: 0, ...this.confettiConfig },
+                  { frame: 1, ...this.confettiConfig },
+                  { frame: 2, ...this.confettiConfig },
                 ])
               },
+            })
+            this.spinning = false
+            this.tweens.add({
+              targets: this.buttonGraphics,
+              alpha: 1,
+              duration: 500,
             })
             this.scene.launch('Score', { prize: segment.heading })
           },
@@ -159,28 +153,20 @@ export default class extends Phaser.Scene {
     })
   }
 
-  spin(amount = 5000 + Math.random() * 1000, duration = SPIN_DURATION) {
+  spin(direction = 1, duration = SPIN_DURATION) {
     this.spinTween && this.spinTween.remove()
     if (this.spinning) return
 
-    // this.tweens.add({
-    //   targets: this.musicAsset,
-    //   volume: 0.2,
-    //   duration: 500,
-    // })
-
-    // const targetIndex = Math.floor(Math.random() * SEGMENTS.length)
     const targetIndex = PRIZES[spinCount % PRIZES.length]
     const variance = Math.random() * 30 - 15
 
     this.spinTween = this.tweens.add({
       targets: [this.container],
-      angle: amount > 1000 ? 5790 + 60 * targetIndex + variance : amount,
+      angle: 5790 * direction + 60 * targetIndex + variance,
       duration: duration,
       ease: 'Cubic.easeOut',
-      onComplete: amount > 1000 ? this.finish.bind(this) : null,
+      onComplete: this.finish.bind(this),
     })
-    // this.sound.play('spin3', { volume: 0.5 })
 
     let tick = (delay) => {
       this.time.addEvent({
@@ -190,13 +176,14 @@ export default class extends Phaser.Scene {
 
           window.navigator.vibrate && window.navigator.vibrate(50)
 
-          this.sound.play('spin', { volume: 0.5, rate: 2 - delay / 650 })
+          this.sound.play('spin', { volume: 0.5, rate: 2 - delay / 1000 })
 
           this.tweens.add({
             targets: [this.cursor],
-            scale: 1 + (500 - delay) / 6000,
+            angle: -8,
+            // scale: 1.05,
             yoyo: true,
-            duration: 20,
+            duration: 30,
             ease: 'Cubic.easeInOut',
           })
           if (delay < 350) {
@@ -208,20 +195,22 @@ export default class extends Phaser.Scene {
 
     tick(50)
 
-    if (amount > 1000) {
-      spinCount++
-      this.spinning = true
-      this.headingText.text = '👀'
+    spinCount++
+    this.spinning = true
+    this.headingText.text = '👀'
 
-      this.tweens.add({
-        targets: this.buttonGraphics,
-        alpha: 0,
-        duration: 500,
-      })
-    }
+    this.tweens.add({
+      targets: this.buttonGraphics,
+      alpha: 0,
+      duration: 500,
+    })
   }
 
   drawWheel() {
+    this.shadow = this.add
+      .sprite(w / 2, h / 2 + 10, 'shadow')
+      .setScale(0.94)
+      .setAlpha(0.4)
     this.wheel = this.add.graphics()
 
     // Draw bg
@@ -239,7 +228,6 @@ export default class extends Phaser.Scene {
       this.wheel.strokePath()
 
       // Draw image and text
-      // TODO: offset only works for 6 segments
       const offset = 1.05
       const angle = frags * i * Math.PI - offset
       const degs = angle * (180 / Math.PI) + 90
@@ -299,13 +287,10 @@ export default class extends Phaser.Scene {
       .text(w / 2, h / 7, 'Try your luck!', headingStyle)
       .setOrigin(0.5)
 
-    // this.add
-    //   .text(w / 2, h / 5.4, 'You have 1 free spin', bodyStyle)
-    //   .setOrigin(0.5)
-
     this.buttonGraphics = this.add.graphics()
     this.buttonGraphics.fillStyle(0x000000)
     this.buttonGraphics.fillRoundedRect(w / 2 - 250, h * 0.8, 500, 120, 60)
+    this.buttonGraphics.setDepth(21)
 
     this.buttonGraphics.setInteractive(
       new Phaser.Geom.Rectangle(w / 2 - 250, h * 0.8, 500, 120),
@@ -318,6 +303,7 @@ export default class extends Phaser.Scene {
     this.add
       .text(w / 2, h / 1.2, 'Spin now!', { ...bodyStyle, color: '#ffffff' })
       .setOrigin(0.5)
+      .setDepth(22)
   }
 
   getAngle(n) {

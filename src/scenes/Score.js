@@ -62,8 +62,26 @@ export default class extends Phaser.Scene {
       })
       .setOrigin(0.5)
 
+    this.confettiConfig = {
+      x: { min: -20, max: this.cameras.main.width + 20 },
+      y: -100,
+      rotate: { min: -500, max: 500, start: -500, end: 500 },
+      speedX: { min: -150, max: 150 },
+      speedY: { min: 0, max: 200 },
+      alpha: { start: 0.25, end: 0 },
+      frame: [0, 1, 2, 3, 4, 5, 6, 7, 8],
+      lifespan: 2000,
+      gravityY: 800,
+      quantity: 1,
+      scale: { min: 1, max: 1.5 },
+      frequency: 50,
+    }
+    this.confetti = this.add.particles('confetti-white', this.confettiConfig)
+    this.emitter = this.confetti.createEmitter()
+
     this.container = this.add.container(0, 1920, [
       bg,
+      this.confetti,
       text1,
       text2,
       text3,
