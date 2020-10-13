@@ -1,3 +1,10 @@
+export const SPIN_DURATION = 5000
+
+export const PRIMARY_COLOR = 0x65af87
+export const SECONDARY_COLOR = 0x417057
+export const BACKGROUND_COLOR = 0x000000
+export const FOREGROUND_COLOR = 0xffffff
+
 export const SEGMENTS = [
   {
     icon: 'hand',

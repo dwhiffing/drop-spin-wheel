@@ -2,9 +2,8 @@ export default class {
   constructor(scene) {
     this.scene = scene
     this.emitters = {}
-    this.confetti = this.confetti.bind(this)
-    this.confettiWhite = this.confetti.bind(this)
-    this.icon = this.icon.bind(this)
+    this.confettiRain = this.confettiRain.bind(this)
+    this.iconBlast = this.iconBlast.bind(this)
     this.clean = this.clean.bind(this)
     this.create = this.create.bind(this)
     const baseIconConfig = {
@@ -41,29 +40,10 @@ export default class {
       frequency: 40,
     }
 
-    this.confettiWhiteConfig = {
-      x: { min: -20, max: scene.cameras.main.width + 20 },
-      y: -200,
-      rotate: { min: -500, max: 500, start: -500, end: 500 },
-      speedX: { min: -150, max: 150 },
-      speedY: { min: 0, max: 200 },
-      alpha: { start: 0.25, end: 0 },
-      frame: [0, 1, 2, 3, 4, 5, 6, 7, 8],
-      lifespan: 2000,
-      gravityY: 800,
-      quantity: 1,
-      active: false,
-      scale: { min: 1, max: 1.5 },
-      frequency: 50,
-    }
-
     this.create()
   }
 
   create() {
-    this.emitters.confettiWhite = this.scene.add
-      .particles('confetti-white')
-      .setDepth(1)
     this.emitters.confetti = this.scene.add
       .particles('confetti', this.confettiConfig)
       .setDepth(1)
@@ -82,19 +62,13 @@ export default class {
     this.emitters.hand2 = this.handParticles.createEmitter(this.iconConfig2)
   }
 
-  confetti() {
+  confettiRain() {
     this.emitters.confetti.emitters.list.forEach((e) => {
       e.active = true
     })
   }
 
-  confettiWhite() {
-    this.emitters.confettiWhite.emitters.list.forEach((e) => {
-      e.active = true
-    })
-  }
-
-  icon(key) {
+  iconBlast(key) {
     this.emitters[key].active = true
     this.emitters[key].explode(50)
 
@@ -104,7 +78,6 @@ export default class {
 
   clean() {
     this.emitters.confetti.destroy()
-    this.emitters.confettiWhite.destroy()
     this.emitters.coin.destroy()
     this.emitters.hand.destroy()
     this.emitters.question.destroy()

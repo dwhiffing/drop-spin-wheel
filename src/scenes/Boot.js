@@ -23,7 +23,6 @@ export default class extends Phaser.Scene {
     )
 
     this.load.audio('spin', 'assets/audio/click.wav', { instances: 5 })
-    // this.load.audio('spin', 'assets/audio/spin.wav', { instances: 5 })
     this.load.audio('win', 'assets/audio/win.wav')
     this.load.spritesheet('confetti', 'assets/images/confetti.png', {
       frameWidth: 100,
