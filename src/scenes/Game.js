@@ -1,4 +1,5 @@
 import { SEGMENTS } from '../constants'
+import Particles from '../particles'
 
 const SPIN_DURATION = 5000
 
@@ -12,7 +13,6 @@ const frags = 360 / SEGMENTS.length / 180
 const PRIZES = [5, 4, 2, 0, 1, 3]
 let spinCount = 0
 
-// TODO: drop shadows
 // TODO: backend integration
 
 export default class extends Phaser.Scene {
@@ -26,45 +26,10 @@ export default class extends Phaser.Scene {
   }
 
   create() {
+    this.particles = new Particles(this)
     this.drawWheel()
     this.drawCursor()
     this.drawUI()
-
-    this.emitters = {}
-    this.iconConfig = {
-      x: w / 2,
-      y: h / 2 - 300,
-      speedX: { min: -400, max: 400 },
-      speedY: { min: -1200, max: -300 },
-      rotate: { min: -1000, max: 1000, start: -1000, end: 1000 },
-      scale: { min: 0.5, max: 1 },
-      active: false,
-      lifespan: 5000,
-      gravityY: 1500,
-    }
-    this.confettiConfig = {
-      x: { min: -20, max: w + 20 },
-      y: -100,
-      rotate: { min: -500, max: 500, start: -500, end: 500 },
-      speedX: { min: -50, max: 50 },
-      speedY: { min: 0, max: 1000 },
-      frame: [0, 1, 2, 3, 4, 5, 6, 7, 8],
-      lifespan: 5000,
-      alpha: { min: 0.5, max: 1 },
-      gravityY: 1000,
-      quantity: 2,
-      active: false,
-      scale: { min: 1, max: 1.5 },
-    }
-    this.emitters.confetti = this.add.particles('confetti', this.confettiConfig)
-    this.coinParticles = this.add.particles('coin').setDepth(22)
-    this.questionParticles = this.add.particles('question').setDepth(22)
-    this.handParticles = this.add.particles('hand').setDepth(22)
-    this.emitters.coin = this.coinParticles.createEmitter(this.iconConfig)
-    this.emitters.question = this.questionParticles.createEmitter(
-      this.iconConfig,
-    )
-    this.emitters.hand = this.handParticles.createEmitter(this.iconConfig)
 
     this.input.on('pointermove', this.move, this)
     this.input.on('pointerdown', this.click, this)
@@ -97,7 +62,7 @@ export default class extends Phaser.Scene {
     }
   }
 
-  release(pointer) {
+  release() {
     if (this.spinning) return
 
     this.isDown = false
@@ -114,41 +79,14 @@ export default class extends Phaser.Scene {
       (Math.floor((this.container.angle + 180) / 60) + 3) % 6
     const segment = SEGMENTS[selectedIndex]
 
-    this.emitters[segment.icon].active = true
-    this.emitters[segment.icon].explode(25)
-
-    this.emitters.confetti.emitters.list.forEach((e) => {
-      e.active = true
-    })
+    this.particles.confetti()
 
     this.time.addEvent({
-      delay: 10,
+      delay: 150,
       callback: () => {
-        this.sound.play('win', { volume: 0.5 })
-        this.time.addEvent({
-          delay: 2500,
-          callback: () => {
-            this.time.addEvent({
-              delay: 1000,
-              callback: () => {
-                this.headingText.text = 'Try your luck!'
-                this.emitters.confetti.destroy()
-                this.emitters.confetti = this.add.particles('confetti', [
-                  { frame: 0, ...this.confettiConfig },
-                  { frame: 1, ...this.confettiConfig },
-                  { frame: 2, ...this.confettiConfig },
-                ])
-              },
-            })
-            this.spinning = false
-            this.tweens.add({
-              targets: this.buttonGraphics,
-              alpha: 1,
-              duration: 500,
-            })
-            this.scene.launch('Score', { prize: segment.heading })
-          },
-        })
+        this.particles.icon(segment.icon)
+        this.playSound('win', { volume: 0.5 })
+        this.scene.launch('Score', { prize: segment.heading })
       },
     })
   }
@@ -176,7 +114,7 @@ export default class extends Phaser.Scene {
 
           window.navigator.vibrate && window.navigator.vibrate(50)
 
-          this.sound.play('spin', { volume: 0.5, rate: 2 - delay / 1000 })
+          this.playSound('spin', { volume: 0.25, rate: 2 - delay / 1000 })
 
           this.tweens.add({
             targets: [this.cursor],
@@ -197,7 +135,8 @@ export default class extends Phaser.Scene {
 
     spinCount++
     this.spinning = true
-    this.headingText.text = '👀'
+    // this.headingText.text = '👀'
+    this.headingText.text = ''
 
     this.tweens.add({
       targets: this.buttonGraphics,
@@ -214,8 +153,14 @@ export default class extends Phaser.Scene {
     this.wheel = this.add.graphics()
 
     // Draw bg
-    this.wheel.arc(0, 0, w / 2.5, 0, 6.1)
+    this.wheel.beginPath()
+    this.wheel.arc(0, 0, w / 2.5, 0, 2 * Math.PI)
     this.wheel.fillStyle(0x000000)
+    this.wheel.fill()
+
+    this.wheel.beginPath()
+    this.wheel.arc(0, 0, w / 2.67, 0, 2 * Math.PI)
+    this.wheel.fillStyle(0x536f59)
     this.wheel.fill()
     let children = []
     const arr = [...SEGMENTS]
@@ -248,7 +193,7 @@ export default class extends Phaser.Scene {
 
     this.container = this.add.container(w / 2, h / 2, [this.wheel, ...children])
     this.container.angle = Math.floor(Math.random() * SEGMENTS.length) * 60 + 30
-    this.container.setDepth(19)
+    this.container.setDepth(2)
   }
 
   drawCursor() {
@@ -275,8 +220,8 @@ export default class extends Phaser.Scene {
       .text(w / 2, h / 2, '???', { ...font, fontSize: 60 })
       .setOrigin(0.5)
 
-    this.cursor.setDepth(20)
-    this.tabText.setDepth(21)
+    this.cursor.setDepth(2)
+    this.tabText.setDepth(3)
   }
 
   drawUI() {
@@ -290,7 +235,7 @@ export default class extends Phaser.Scene {
     this.buttonGraphics = this.add.graphics()
     this.buttonGraphics.fillStyle(0x000000)
     this.buttonGraphics.fillRoundedRect(w / 2 - 250, h * 0.8, 500, 120, 60)
-    this.buttonGraphics.setDepth(21)
+    this.buttonGraphics.setDepth(3)
 
     this.buttonGraphics.setInteractive(
       new Phaser.Geom.Rectangle(w / 2 - 250, h * 0.8, 500, 120),
@@ -303,10 +248,16 @@ export default class extends Phaser.Scene {
     this.add
       .text(w / 2, h / 1.2, 'Spin now!', { ...bodyStyle, color: '#ffffff' })
       .setOrigin(0.5)
-      .setDepth(22)
+      .setDepth(4)
   }
 
   getAngle(n) {
     return (((Math.PI / 180) * 360) / SEGMENTS.length) * n + 0.525
+  }
+
+  playSound(key, opts = {}) {
+    try {
+      this.sound.play(key, opts)
+    } catch (e) {}
   }
 }

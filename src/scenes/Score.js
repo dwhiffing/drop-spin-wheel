@@ -45,12 +45,7 @@ export default class extends Phaser.Scene {
       Phaser.Geom.Rectangle.Contains,
     )
     buttonGraphics.on('pointerdown', () => {
-      this.tweens.add({
-        targets: [this.container],
-        y: 1920,
-        ease: 'Cubic.easeOut',
-        duration: 500,
-      })
+      window.location.reload()
     })
 
     const buttonText = this.add
@@ -64,7 +59,7 @@ export default class extends Phaser.Scene {
 
     this.confettiConfig = {
       x: { min: -20, max: this.cameras.main.width + 20 },
-      y: -100,
+      y: -200,
       rotate: { min: -500, max: 500, start: -500, end: 500 },
       speedX: { min: -150, max: 150 },
       speedY: { min: 0, max: 200 },
@@ -76,8 +71,8 @@ export default class extends Phaser.Scene {
       scale: { min: 1, max: 1.5 },
       frequency: 50,
     }
-    this.confetti = this.add.particles('confetti-white', this.confettiConfig)
-    this.emitter = this.confetti.createEmitter()
+    this.confetti = this.add.particles('confetti-white')
+    this.emitter = this.confetti.createEmitter(this.confettiConfig)
 
     this.container = this.add.container(0, 1920, [
       bg,
@@ -94,6 +89,7 @@ export default class extends Phaser.Scene {
       y: 0,
       ease: 'Cubic.easeOut',
       duration: 500,
+      delay: 3000,
     })
   }
 }
